@@ -68,3 +68,22 @@ def plot_grouped_bar(data, labels, series_names, width=0.35, y_label=None, title
     fig.tight_layout()
 
     plt.show()
+
+def plot_multiscatter(df: pd.DataFrame, features_x, features_y, within_x=False, within_y=False):
+    features_x = to_array(features_x)
+    features_y = to_array(features_y)
+    
+    for x, y in itertools.product(features_x, features_y):
+        plot_scatter(x=df[x], y=df[y])
+    
+    if within_x:
+        plot_multiscatter(df, features_x, features_x)
+        
+    if within_y:
+        plot_multiscatter(df, features_y, features_y)
+
+def plot_scatter(x, y, z=None, title=None):
+    ax = sns.scatterplot(x=x, y=y, hue=z)
+    if title:
+        ax.set_title(title)
+    plt.show()
