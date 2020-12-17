@@ -2,8 +2,53 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import itertools
 
 from argus.utils import to_array, to_ndarray
+
+def plot_mirrorline(df, x_column, scale=False):
+    if isinstance(x_column, str):
+        x_points = df[x_column]
+    else:
+        x_points = to_array(x_column)
+    assert df.shape[1] == 2, "Dataframe must have two columns"
+    upper_line = df.columns[0]
+    lower_line = df.columns[1]
+    if scale:
+        for col in [upper_line, lower_line]:
+            df[col] = (df[col] - df[col].min())/ (df[col].max() - df[col].min())
+    # Ensure lines are positive
+    df[upper_line] = df[upper_line] - min(df[upper_line].min(), 0)
+    df[lower_line] = - (df[lower_line] - min(df[lower_line].min(), 0))
+    
+    sns.lineplot(y=df[upper_line], x=x_points)
+    sns.lineplot(y=df[lower_line], x=x_points)
+
+    plt.legend()
+    plt.show()
+
+
+def plot_multiline(df: pd.DataFrame, x_column, labels=None, scale=False):
+    if isinstance(x_column, str):
+        x_points = df[x_column]
+    else:
+        x_points = to_array(x_column)
+    
+    if labels:
+        labels = to_array(labels)
+        assert df.shape[1] == labels.shape[0], "Data columns and labels must have same dimensionality"
+    if isinstance(df, pd.Series):
+        _df = pd.DataFrame()
+        _df['_'] = df.values
+        df = _df
+    for col in df.columns:
+        if scale:
+            y = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+        else:
+            y = df[col]
+        sns.lineplot(x=x_points, y=y)
+    plt.legend()
+    plt.show()
 
 def plot_densities(data, labels=None):
     data = to_ndarray(data)
