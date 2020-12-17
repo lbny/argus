@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from argus.utils import to_array, to_ndarray
+
 def get_descriptive_stats(x: np.array, options=['mean', 'var'], quantiles=None, keep_na=False, verbose=False) -> dict:
     if isinstance(x, pd.Series):
         x = x.values
@@ -32,4 +34,4 @@ def get_descriptive_stats(x: np.array, options=['mean', 'var'], quantiles=None, 
             stats[f"{int(k * 100)}_quantile"] = v
     if verbose:
         print(stats)
-    return stats
+    return stats 

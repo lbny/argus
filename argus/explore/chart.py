@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 
+from argus.utils import to_array, to_ndarray
+
 def plot_densities(data, labels=None):
     data = to_ndarray(data)
     if labels:
