@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+datasets/jane_street/features.csv
+datasets/jane_street/train_100_000.csv
