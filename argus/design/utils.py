@@ -1,30 +1,43 @@
 import numpy as np
-from argus.utils import to_array
 
-def to_classes(x, n_classes=2, min_value=None, max_value=None, agg_function=None, verbose=False):
-    x = to_array(x)
-    n_classes = int(n_classes)
-    if not min_value:
-        min_value = np.min(x)
-    if not max_value:
-        max_value = np.max(x)
-    if verbose:
-        print(f"Value max: {min_value}")
-        print(f"Value min: {max_value}")
-    if not agg_function:
-        agg_function = np.mean
-    
-    step = (max_value - min_value) / n_classes
-    classes_array = np.zeros((x.shape[0],))
-    for j in range(n_classes):
-        if verbose:
-            print(f"Interval lower bound: {min_value + j * step}")
-            print(f"Interval upper bound: {min_value + (j + 1) * step}")
-        if j < n_classes - 1:
-            idx = np.where((0 <= x - min_value - j * step) & (x - min_value - j * step < step))[0]
-        else:
-            # if last chunk, take inferior or equal (instead of strictly inferio) to max value
-            # n_steps * steps =/= max_value because of float approximation
-            idx = np.where((0 <= x - min_value - j * step) & (x <= max_value))[0]
-        classes_array[idx] = agg_function(x[idx])
-    return classes_array
+import pickle
+
+def get_functions(config: dict, functions_by_name: dict, file_folder=None, seed=1234) -> list:
+    """
+    :config: A dictionary, keys are functions names, values are either true boolean
+    either a dictionary of parameters. Parameters must be consistent with the corresponding
+    function declared in function_by_name dictinary. In order to fit an object beforehand,
+    declare a function with the prefix "fit_" (or any prefix declared in argus.FITTING_PREXIF)
+    that will be called on the whole dataset
+    :function_by_name: A dictionary, keys are function names, values the actual function objects
+    :file_folder: A string, path to the folder containing the files required to apply functions
+    Return:
+        A list of functions with corresponding parameters
+    """
+    functions_list = []
+
+    for func_dict in config:
+        function_name = list(func_dict.keys())[0]
+        params = func_dict[function_name]
+        params['seed'] = seed
+        assert function_name in functions_by_name, f"{function_name} function doesnt exist."
+        functions_list.append((functions_by_name[function_name], format_parameters(params, file_folder)))
+    return functions_list
+
+def format_parameters(params: dict, file_folder: str) -> dict:
+    for key, param in params.items():
+        if isinstance(key, str):
+            if '.' in key:
+                # it has a file extension
+                data = None
+                try:
+                    with open(osp.join(file_folder, key), 'r') as f:
+                        data = f.read()
+                        f.close()
+                except:
+                    with open(osp.join(file_folder, key), 'rb') as f:
+                        data = pickle.load(f)
+                        f.close()
+                params[key] = data
+    return params
+
