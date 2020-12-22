@@ -1,1 +1,4 @@
 ray
+scipy
+numpy
+pandas
