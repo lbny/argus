@@ -29,6 +29,9 @@ def to_array(x, one_dimensional=True) -> np.array:
 import scipy.sparse as sp
 import pandas as pd 
 import numpy as np
+import inspect
+import argus
+
 
 PANDAS = 'PD'
 NUMPY = 'NP'
@@ -40,12 +43,16 @@ DATA_MAP = {
     SPARSE_CSR: sp.csr_matrix
 }
 
+CONCAT_FUNCTIONS = {
+    k
+}
+
 class ArgusDataset(tuple):
     """
     To add a new type of dataset:
     1- Decalre class static variable, update DATA_TYPES and DATA_MAP
     2- Update .__getitem__
-    3- Update .concat with concatenation method
+    3- Update utils.py with concatenation method, must have same prefix as data_type declared in this module.
     4- Update .get_data to retrieve merged dataset
     """
     
@@ -72,7 +79,7 @@ class ArgusDataset(tuple):
         self.verbose = verbose
 
     def _init_shape(self):
-        
+        pass
 
     def is_empty(self):
         if self.dataset_dict[self.index_type]:
@@ -90,7 +97,8 @@ class ArgusDataset(tuple):
         # TO OVERRIDE
         pass
 
-    
+
+   
 def get_datasets_by_type(dataset_list: list, data_type):
     dataset_list = [dataset[data_type] for dataset in dataset_list if not dataset[data_type] is None]
     if len(dataset_list) == 0:
