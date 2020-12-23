@@ -127,15 +127,14 @@ class ArgusDataset(tuple):
         use_as_index=PANDAS, 
         verbose=False):
         # TODO : format verification
-        # TODO : create dataset with data_types as keywords
+        if dataset_dict is None:
+            dataset_dict = {}
         if not df is None:
             dataset_dict[PANDAS] = df
         if not X is None:
             dataset_dict[NUMPY] = X
-        if not X_sp uis
-
-        if dataset_dict is None:
-            dataset_dict = {}
+        if not X_sp is None:
+            dataset_dict[SPARSE_CSR] = X_sp        
         assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
         self.dataset_dict = dataset_dict
         self.verbose = verbose
@@ -154,21 +153,21 @@ class ArgusDataset(tuple):
     def get_data(self):
         # return a merged version of the data
 
-    @staticmethod
-    def get_datasets_by_type(dataset_list: list, data_type):
-        return [dataset[data_type] for dataset in dataset_list if not dataset[PANDAS] is None]
+    
+def get_datasets_by_type(dataset_list: list, data_type):
+    return [dataset[data_type] for dataset in dataset_list if not dataset[PANDAS] is None]
 
-    @staticmethod
-    def concat(dataset_list: list) -> ArgusDataset:
-        for data_type in DATA_TYPES:
-            assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
+    
+def concat(dataset_list: list) -> ArgusDataset:
+    for data_type in DATA_TYPES:
+        assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
 
-        return ArgusDataset(dataset_dict={
-            ArgusDataset.PANDAS: pd.concat(get_datasets_by_type(dataset_list, PANDAS)),
-            ArgusDataset.NUMPY: np.concatenate(get_datasets_by_type(dataset_list, NUMPY), axis=0),
-            ArgusDataset.SPARSE_CSR: sp.vstack(get_datasets_by_type(dataset_list, SPARSE_CSR))
-        })
-        # Concatenate list checking if diff from None
+    return ArgusDataset(dataset_dict={
+        ArgusDataset.PANDAS: pd.concat(get_datasets_by_type(dataset_list, PANDAS)),
+        ArgusDataset.NUMPY: np.concatenate(get_datasets_by_type(dataset_list, NUMPY), axis=0),
+        ArgusDataset.SPARSE_CSR: sp.vstack(get_datasets_by_type(dataset_list, SPARSE_CSR))
+    })
+    # Concatenate list checking if diff from None
 
 
 class ArgusFeaturesPipeline:
@@ -203,9 +202,9 @@ class ArgusFeaturesPipeline:
             if len(fitting_functions_list) > 0:
                 if self.verbose:
                     print(f"Fitting function detected: {fitting_functions_list[0]}")
-                df = pd.concat(list(df_dict.values()))
-                params = self.functions_by_name[fitting_functions_list[0]](df, params)
-                del df
+                dataset = concat([dataset_dict.values()])
+                params = self.functions_by_name[fitting_functions_list[0]](dataset, params)
+                del dataset
                 gc.collect()
 
             # If function is row-level, append to buffer
@@ -213,7 +212,8 @@ class ArgusFeaturesPipeline:
             if get_preprocessing_function_level(function.__name__) == argus.ROW_LEVEL:
                 row_level_functions_buffer.append((function, params))
             else:
-                df_dict, row_level_functions_buffer = self._apply_row_level_functions(df_dict, row_level_functions_buffer)
+                for 
+                df_dict, row_level_functions_buffer = self._apply_row_level_functions(dataset_dict, row_level_functions_buffer)
 
                 # Transform each dataset
                 for key, _df in df_dict.items():
