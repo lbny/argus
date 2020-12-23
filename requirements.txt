@@ -2,3 +2,5 @@ ray
 scipy
 numpy
 pandas
+sphinx
+pyyaml

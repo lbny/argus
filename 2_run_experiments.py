@@ -103,7 +103,13 @@ for dataset_name in dataset_dict.keys():
 import scipy.sprase as sp
 
 class ArgusDataset(tuple):
-
+    """
+    To add a new type of dataset:
+    1- Decalre class static variable, update DATA_TYPES and DATA_MAP
+    2- Update .__getitem__
+    3- Update .concat with concatenation method
+    4- Update .get_data to retrieve merged dataset
+    """
     PANDAS = 'PD'
     NUMPY = 'NP'
     SPARSE_CSR = 'SP'
@@ -114,7 +120,7 @@ class ArgusDataset(tuple):
         SPARSE_CSR: sp.csr_matrix
     }
 
-    def __init__(self, dataset_dict=None, verbose=False):
+    def __init__(self, dataset_dict=None, use_as_index=PANDAS, verbose=False):
         # TODO : format verification
         
 
@@ -129,15 +135,18 @@ class ArgusDataset(tuple):
             return self.dataset_dict[PANDAS].shape[0] == 0
         return True
 
-    def __call__(self, dataset_id):
+    def __getitem__(self, dataset_id):
         return self.dataset_dict[dataset_id]
+
+    def get_data(self):
+        # return a merged version of the data
 
     @staticmethod
     def concat(dataset_list: list) -> ArgusDataset:
         for data_type in DATA_TYPES:
             assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
 
-        if 
+        # Concatenate list checking if diff from None
 
 
 class ArgusFeaturesPipeline:
