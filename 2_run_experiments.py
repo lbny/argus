@@ -81,7 +81,8 @@ for dataset_name, dataset_filepath in config['source_filpaths'].items():
 #############################################
 # 3. Dataset splitting
 
-def split_datasets()
+def split_datasets():
+    pass
 
 #############################################
 #############################################
@@ -90,9 +91,9 @@ def split_datasets()
 # Initialize array and sparse features
 dataset_dict = {}
 
-for dataset_name in df_dict.keys():
-    dataset_tuple = (d
-        f_dict[dataset_name], 
+for dataset_name in dataset_dict.keys():
+    dataset_tuple = (
+        dataset_dict[dataset_name], 
         np.empty(shape=(df_dict[dataset_name].shape[0])),
         csr_matrix(shape=(df_dict[dataset_name].shape[0]))
     )
@@ -102,24 +103,41 @@ for dataset_name in df_dict.keys():
 import scipy.sprase as sp
 
 class ArgusDataset(tuple):
-    def __init__(self,df: pd.DataFrame, X_train: np.array, X_train_sp):
+
+    PANDAS = 'PD'
+    NUMPY = 'NP'
+    SPARSE_CSR = 'SP'
+    DATA_TYPES = [PANDAS, NUMPY, SPARSE_CSR]
+    DATA_MAP = {
+        PANDAS: pd.DataFrame,
+        NUMPY: np.array,
+        SPARSE_CSR: sp.csr_matrix
+    }
+
+    def __init__(self, dataset_dict=None, verbose=False):
         # TODO : format verification
-        self.df = df
-        self.X_train = X_train
-        self.X_train_sp = X_train_sp
+        
+
+        if dataset_dict is None:
+            dataset_dict = {}
+        assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
+        self.dataset_dict = dataset_dict
+        self.verbose = verbose
 
     def is_empty(self):
-        if self.df:
-            return self.df.shape[0] == 0
+        if self.dataset_dict[PANDAS]:
+            return self.dataset_dict[PANDAS].shape[0] == 0
         return True
 
     def __call__(self, dataset_id):
-        if dataset_id == 'pd':
-            return self.df
-        elif dataset_id == 'np':
-            return self.X_train
-        elif dataset_id == 'sp':
-            return self.X_train_sp
+        return self.dataset_dict[dataset_id]
+
+    @staticmethod
+    def concat(dataset_list: list) -> ArgusDataset:
+        for data_type in DATA_TYPES:
+            assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
+
+        if 
 
 
 class ArgusFeaturesPipeline:
