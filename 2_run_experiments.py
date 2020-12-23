@@ -120,9 +120,19 @@ class ArgusDataset(tuple):
         SPARSE_CSR: sp.csr_matrix
     }
 
-    def __init__(self, dataset_dict=None, use_as_index=PANDAS, verbose=False):
+    def __init__(self, dataset_dict=None,
+        df: pd.DataFrame=None,
+        X: np.array=None,
+        X_sp=None, 
+        use_as_index=PANDAS, 
+        verbose=False):
         # TODO : format verification
-        
+        # TODO : create dataset with data_types as keywords
+        if not df is None:
+            dataset_dict[PANDAS] = df
+        if not X is None:
+            dataset_dict[NUMPY] = X
+        if not X_sp uis
 
         if dataset_dict is None:
             dataset_dict = {}
@@ -136,16 +146,28 @@ class ArgusDataset(tuple):
         return True
 
     def __getitem__(self, dataset_id):
+        return self.dataset_dict.get(dataset_id)
+
+    def get_dataset(self, dataset_id)
         return self.dataset_dict[dataset_id]
 
     def get_data(self):
         # return a merged version of the data
 
     @staticmethod
+    def get_datasets_by_type(dataset_list: list, data_type):
+        return [dataset[data_type] for dataset in dataset_list if not dataset[PANDAS] is None]
+
+    @staticmethod
     def concat(dataset_list: list) -> ArgusDataset:
         for data_type in DATA_TYPES:
             assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
 
+        return ArgusDataset(dataset_dict={
+            ArgusDataset.PANDAS: pd.concat(get_datasets_by_type(dataset_list, PANDAS)),
+            ArgusDataset.NUMPY: np.concatenate(get_datasets_by_type(dataset_list, NUMPY), axis=0),
+            ArgusDataset.SPARSE_CSR: sp.vstack(get_datasets_by_type(dataset_list, SPARSE_CSR))
+        })
         # Concatenate list checking if diff from None
 
 
