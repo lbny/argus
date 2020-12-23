@@ -100,74 +100,7 @@ for dataset_name in dataset_dict.keys():
     dataset_dict[dataset_name] = dataset_tuple
 
 # %%
-import scipy.sprase as sp
 
-class ArgusDataset(tuple):
-    """
-    To add a new type of dataset:
-    1- Decalre class static variable, update DATA_TYPES and DATA_MAP
-    2- Update .__getitem__
-    3- Update .concat with concatenation method
-    4- Update .get_data to retrieve merged dataset
-    """
-    PANDAS = 'PD'
-    NUMPY = 'NP'
-    SPARSE_CSR = 'SP'
-    DATA_TYPES = [PANDAS, NUMPY, SPARSE_CSR]
-    DATA_MAP = {
-        PANDAS: pd.DataFrame,
-        NUMPY: np.array,
-        SPARSE_CSR: sp.csr_matrix
-    }
-
-    def __init__(self, dataset_dict=None,
-        df: pd.DataFrame=None,
-        X: np.array=None,
-        X_sp=None, 
-        use_as_index=PANDAS, 
-        verbose=False):
-        # TODO : format verification
-        if dataset_dict is None:
-            dataset_dict = {}
-        if not df is None:
-            dataset_dict[PANDAS] = df
-        if not X is None:
-            dataset_dict[NUMPY] = X
-        if not X_sp is None:
-            dataset_dict[SPARSE_CSR] = X_sp        
-        assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
-        self.dataset_dict = dataset_dict
-        self.verbose = verbose
-
-    def is_empty(self):
-        if self.dataset_dict[PANDAS]:
-            return self.dataset_dict[PANDAS].shape[0] == 0
-        return True
-
-    def __getitem__(self, dataset_id):
-        return self.dataset_dict.get(dataset_id)
-
-    def get_dataset(self, dataset_id)
-        return self.dataset_dict[dataset_id]
-
-    def get_data(self):
-        # return a merged version of the data
-
-    
-def get_datasets_by_type(dataset_list: list, data_type):
-    return [dataset[data_type] for dataset in dataset_list if not dataset[PANDAS] is None]
-
-    
-def concat(dataset_list: list) -> ArgusDataset:
-    for data_type in DATA_TYPES:
-        assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
-
-    return ArgusDataset(dataset_dict={
-        ArgusDataset.PANDAS: pd.concat(get_datasets_by_type(dataset_list, PANDAS)),
-        ArgusDataset.NUMPY: np.concatenate(get_datasets_by_type(dataset_list, NUMPY), axis=0),
-        ArgusDataset.SPARSE_CSR: sp.vstack(get_datasets_by_type(dataset_list, SPARSE_CSR))
-    })
-    # Concatenate list checking if diff from None
 
 
 class ArgusFeaturesPipeline:
