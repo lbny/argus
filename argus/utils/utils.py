@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp
 
-def pd_concat(df_list: list) -> pd.DataFrame:
-    return pd.concat(df_list)
+def pd_concat(df_list: list, axis=0) -> pd.DataFrame:
+    return pd.concat(df_list, axis=axis)
 
 def np_concat(np_list: list, axis=0) -> np.array:
     return np.concatenate(np_list, axis=axis)

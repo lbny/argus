@@ -30,7 +30,7 @@ import scipy.sparse as sp
 import pandas as pd 
 import numpy as np
 import inspect
-import argus
+import argus.utils.utils as utils
 
 
 PANDAS = 'PD'
@@ -42,10 +42,13 @@ DATA_MAP = {
     NUMPY: np.array,
     SPARSE_CSR: sp.csr_matrix
 }
-
-CONCAT_FUNCTIONS = {
-    k
+NULL_VALUE_MAP = {
+    PANDAS: pd.DataFrame(),
+    NUMPY: np.empty(shape=(0,0)),
+    SPARSE_CSR: sp.csr_matrix(np.empty(shape=(0,0)))
 }
+
+CONCAT_FUNCTIONS = {data_type: dict(inspect.getmembers(utils))[f"{data_type.lower()}_concat"] for data_type in DATA_TYPES}
 
 class ArgusDataset(tuple):
     """
@@ -57,12 +60,23 @@ class ArgusDataset(tuple):
     """
     
 
-    def __init__(self, dataset_dict=None,
+    def __init__(self, 
+        dataset_dict=None,
         df: pd.DataFrame=None,
         X: np.array=None,
         X_sp=None, 
-        use_as_index=PANDAS, 
+        use_as_index=PANDAS,
         verbose=False):
+        """[summary]
+
+        Args:
+            dataset_dict ([type], optional): [description]. Defaults to None.
+            df (pd.DataFrame, optional): [description]. Defaults to None.
+            X (np.array, optional): [description]. Defaults to None.
+            X_sp ([type], optional): [description]. Defaults to None.
+            use_as_index ([type], optional): [description]. Defaults to PANDAS.
+            verbose (bool, optional): [description]. Defaults to False.
+        """
         # TODO : format verification
         if dataset_dict is None:
             dataset_dict = {}
@@ -74,12 +88,18 @@ class ArgusDataset(tuple):
             dataset_dict[SPARSE_CSR] = X_sp        
         assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
         
+        for data_type in DATA_TYPES:
+            if not data_type in dataset_dict:
+                dataset_dict[data_type] = NULL_VALUE_MAP[data_type] 
+
         self.index_type = use_as_index
         self.dataset_dict = dataset_dict
         self.verbose = verbose
 
+        self._init_shape()
+
     def _init_shape(self):
-        pass
+        self.shape = (self.dataset_dict[self.index_type].shape[0], self.dataset_dict[self.index_type].shape[1]) 
 
     def is_empty(self):
         if self.dataset_dict[self.index_type]:
@@ -97,20 +117,38 @@ class ArgusDataset(tuple):
         # TO OVERRIDE
         pass
 
+def to_dataset_list(datasets) -> list:
+    """[Returns a list of dataset]
 
-   
-def get_datasets_by_type(dataset_list: list, data_type):
-    dataset_list = [dataset[data_type] for dataset in dataset_list if not dataset[data_type] is None]
+    Args:
+        datasets ([list or dict]): [description]
+
+    Returns:
+        list: [description]
+    """
+    if isinstance(datasets, dict):
+        datasets = list(datasets.values())
+    assert isinstance(datasets, list), "Input must be a list or dictionary of ArgusDataset"
     if len(dataset_list) == 0:
         return None
-    return dataset_list
+    return datasets
+
+def get_datasets_by_type(datasets, data_type):
+    datasets = to_dataset_list(datasets)
+    if datasets:
+        datasets = [dataset[data_type] for dataset in datasets if not dataset[data_type] is None]
+
+    return datasets
     
-def concat(dataset_list: list) -> ArgusDataset:
-    concatenated_dataset = {}
-    for data_type in DATA_TYPES:
-        assert np.unique([dataset[data_type].shape[1] for dataset in dataset_list]), "Concat mismatch: All {data_type}-type data must have the same number of columns."
-        concat_dataset = get_datasets_by_type(dataset_list, data_type)
-        if concat_dataset:
-            concatenated_dataset[data_type] = concat_dataset
-    return ArgusDataset(dataset_dict=concatenated_dataset)
+def concat(datasets, axis=0) -> ArgusDataset:
+    datasets = to_dataset_list(datasets)
+    if datasets:
+        concatenated_dataset = {}
+        for data_type in DATA_TYPES:
+            assert np.unique([dataset[data_type].shape[1] for dataset in datasets]) == 1, "Concat mismatch: All {data_type}-type data must have the same number of columns."
+            concat_dataset = get_datasets_by_type(datasets, data_type)
+            if concat_dataset:
+                concatenated_dataset[data_type] = CONCAT_FUNCTIONS[data_type](concat_dataset, axis=axis)
+        return ArgusDataset(dataset_dict=concatenated_dataset)
+    return ArgusDataset()
     # Concatenate list checking if diff from None

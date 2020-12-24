@@ -33,3 +33,7 @@ dataset_dict = {
     k: ArgusDataset(df=df_dict[k], X=X_dict[k], X_sp=X_sp_dict[k]) for k in df_dict.keys()
 }
 # %%
+from argus.utils.data import concat
+
+concat(list(dataset_dict.values()))
+# %%
