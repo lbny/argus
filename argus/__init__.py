@@ -5,6 +5,7 @@ from argus import run
 
 import inspect
 
+from argus.utils.data import *
 from argus.design import PREPROCESSING_FUNCTIONS, FEATURES_FUNCTIONS
 
 DATASETS = ['train', 'valid', 'test']

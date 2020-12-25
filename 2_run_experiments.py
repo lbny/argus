@@ -41,9 +41,14 @@ seed: 1234
 
 shared_features:
     tf_idf:
+        fit_tf_idf: null
         text_colname: text
         sublinear_tf: true
         min_df: 10
+
+    add_sum_col:
+        colnames: ['feature_1', 'feature_2']
+        destination_colname: sum_col
 
 experiment_features:
     tf_idf:
@@ -74,8 +79,9 @@ config = yaml.load(PARAMETERS, Loader=Loader)
 # 3. Loading datasets
 df_dict = {}
 
-for dataset_name, dataset_filepath in config['source_filpaths'].items():
+for dataset_name, dataset_filepath in config['source_filepaths'].items():
     df_dict[dataset_name] = pd.read_csv(dataset_filepath)
+    df_dict[dataset_name]['text'] = 'BOnjour à tous !'
 
 #############################################
 #############################################
@@ -91,36 +97,40 @@ def split_datasets():
 # Initialize array and sparse features
 dataset_dict = {}
 
-for dataset_name in dataset_dict.keys():
-    dataset_tuple = (
-        dataset_dict[dataset_name], 
-        np.empty(shape=(df_dict[dataset_name].shape[0])),
-        csr_matrix(shape=(df_dict[dataset_name].shape[0]))
-    )
-    dataset_dict[dataset_name] = dataset_tuple
+for dataset_name in df_dict.keys():
+    dataset_dict[dataset_name] = ArgusDataset(df=df_dict[dataset_name])
+
 
 # %%
 
-
+import argus
+from argus.utils.data import concat
 
 class ArgusFeaturesPipeline:
-    def __init__(self, functions_list: list, functions_by_name: dict, nb_workers=1, verbose=False):
+    def __init__(self, functions_list, functions_by_name: dict, nb_workers=1, verbose=False):
+        if isinstance(functions_list, dict):
+            functions_list = functions_list.items()
         self.functions_list = functions_list
         self.functions_by_name = functions_by_name 
         self.nb_workers = nb_workers
         self.verbose = verbose
 
     def apply(self, dataset_dict: dict) -> dict:
-        """
-        Dataset-level transformations are applied on-the-fly
+        """[Dataset-level transformations are applied on-the-fly
         Row-level transformations are applied in lazy mode: i.e. 
         functions are "pipelined" (and not applied) until a non-row-level
-        function pops up.
+        function pops up.]
+
+        Args:
+            dataset_dict (dict): [Dictionary of ArgusDataset objects]
+
+        Returns:
+            dict: [description]
         """
-        null_dataset_dict = {}
+        null_datasets_dict = {}
         for key in dataset_dict:
-            if dataset_dict[key].is_null()
-                null_dfs_dict[key] = dataset_dict.pop(key)
+            if dataset_dict[key].is_null():
+                null_datasets_dict[key] = dataset_dict.pop(key)
 
 
         row_level_functions_buffer = list()
@@ -135,7 +145,7 @@ class ArgusFeaturesPipeline:
             if len(fitting_functions_list) > 0:
                 if self.verbose:
                     print(f"Fitting function detected: {fitting_functions_list[0]}")
-                dataset = concat([dataset_dict.values()])
+                dataset = concat(dataset_dict)
                 params = self.functions_by_name[fitting_functions_list[0]](dataset, params)
                 del dataset
                 gc.collect()
@@ -145,30 +155,32 @@ class ArgusFeaturesPipeline:
             if get_preprocessing_function_level(function.__name__) == argus.ROW_LEVEL:
                 row_level_functions_buffer.append((function, params))
             else:
-                for 
-                df_dict, row_level_functions_buffer = self._apply_row_level_functions(dataset_dict, row_level_functions_buffer)
+                # Apply all row-level transformations from buffer (then flush)
+                dataset_dict, row_level_functions_buffer = self._apply_row_level_functions(dataset_dict, row_level_functions_buffer)
 
                 # Transform each dataset
-                for key, _df in df_dict.items():
+                for key, dataset in dataset_dict.items():
                     if self.verbose:
                         print(f'Applying {function} with parameters {params}...')
-                    df_dict[key] = function(df_dict[key], params)
-        if len(row_level_functions_buffer) > 0:
-            df_dict, row_level_functions_buffer = self._apply_row_level_functions(df_dict, row_level_functions_buffer)
+                    dataset_dict[key] = function(dataset, params)
         
-        df_dict.update(null_dfs_dict)
-        return df_dict
+        # After end of iteration, applu row-level transformations from buffer (if any)
+        if len(row_level_functions_buffer) > 0:
+            dataset_dict, row_level_functions_buffer = self._apply_row_level_functions(dataset_dict, row_level_functions_buffer)
+        
+        dataset_dict.update(null_datasets_dict)
+        return dataset_dict
 
-    def _apply_row_level_functions(self, df_dict: dict, row_level_functions_buffer: list):
+    def _apply_row_level_functions(self, dataset_dict: dict, row_level_functions_buffer: list):
         # Check if buffer is not empty
         if len(row_level_functions_buffer) > 0:
             if self.verbose:
                 print(f"Current buffer: {row_level_functions_buffer}")
-            for key, _df in df_dict.items():
-                df_dict[key] = self._apply_function(df_dict[key], row_level_functions_buffer)
+            for key, _dataset in dataset_dict.items():
+                dataset_dict[key][argus.PANDAS] = self._apply_function(dataset_dict[key][argus.PANDAS], row_level_functions_buffer)
             # Then flush
             row_level_functions_buffer = []
-        return df_dict, row_level_functions_buffer
+        return dataset_dict, row_level_functions_buffer
 
     def _apply_function(self, df: pd.DataFrame, row_level_functions_list: list) -> pd.DataFrame:
         # Check level of function : dataset or row
@@ -196,3 +208,13 @@ class ArgusFeaturesPipeline:
 #############################################
 #############################################
 # 6. Run experiments
+
+# %%
+
+shared_features_pipeline = ArgusFeaturesPipeline(config['shared_features'], functions_by_name=argus.FEATURES_FUNCTIONS, verbose=True)
+shared_features_pipeline.apply(dataset_dict)
+# %%
+
+# %%
+
+# %%

@@ -35,5 +35,10 @@ dataset_dict = {
 # %%
 from argus.utils.data import concat
 
-concat(list(dataset_dict.values()))
+d = concat(dataset_dict)
+# %%
+d = concat(list(dataset_dict.values()), axis=1)
+
+# %%
+
 # %%

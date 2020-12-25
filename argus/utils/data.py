@@ -96,13 +96,14 @@ class ArgusDataset(tuple):
         self.dataset_dict = dataset_dict
         self.verbose = verbose
 
-        self._init_shape()
+        self._init_shapes()
 
-    def _init_shape(self):
+    def _init_shapes(self):
         self.shape = (self.dataset_dict[self.index_type].shape[0], self.dataset_dict[self.index_type].shape[1]) 
+        self.shape_dict = {k: data.shape for k, data in self.dataset_dict.items()}
 
-    def is_empty(self):
-        if self.dataset_dict[self.index_type]:
+    def is_null(self):
+        if not self.dataset_dict[self.index_type] is None:
             return self.dataset_dict[self.index_type].shape[0] == 0
         return True
 
@@ -129,7 +130,7 @@ def to_dataset_list(datasets) -> list:
     if isinstance(datasets, dict):
         datasets = list(datasets.values())
     assert isinstance(datasets, list), "Input must be a list or dictionary of ArgusDataset"
-    if len(dataset_list) == 0:
+    if len(datasets) == 0:
         return None
     return datasets
 
@@ -145,10 +146,20 @@ def concat(datasets, axis=0) -> ArgusDataset:
     if datasets:
         concatenated_dataset = {}
         for data_type in DATA_TYPES:
-            assert np.unique([dataset[data_type].shape[1] for dataset in datasets]) == 1, "Concat mismatch: All {data_type}-type data must have the same number of columns."
+            n_axis_per_dataset = np.unique([len(dataset[data_type].shape) for dataset in datasets])
+            assert n_axis_per_dataset.shape[0] == 1, f"Concat mismatch: Different number of axis for {data_type}-type data"
+            n_axis = n_axis_per_dataset[0]
+
+            for _axis in np.arange(n_axis):
+                if _axis != axis:
+                    assert np.unique([dataset[data_type].shape[_axis] for dataset in datasets]).shape[0] == 1, f"Concat mismatch: All {data_type}-type data must have the dimension on axis {_axis}"
+            
             concat_dataset = get_datasets_by_type(datasets, data_type)
             if concat_dataset:
-                concatenated_dataset[data_type] = CONCAT_FUNCTIONS[data_type](concat_dataset, axis=axis)
+                if len(concat_dataset) > 0:
+                    concatenated_dataset[data_type] = CONCAT_FUNCTIONS[data_type](concat_dataset, axis=axis)
+                else:
+                    concatenated_dataset[data_type] = concat_dataset[0]
         return ArgusDataset(dataset_dict=concatenated_dataset)
     return ArgusDataset()
     # Concatenate list checking if diff from None
