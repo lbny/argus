@@ -7,6 +7,10 @@ from yaml import Loader
 import argus
 from argus import *
 
+import gc
+import os
+import os.path as osp
+
 from pandarallel import pandarallel
 
 """
@@ -35,30 +39,35 @@ source_filepaths:
     train_dataset_filepath: ./datasets/jane_street/preprocessed/train.csv
     valid_dataset_filepath: ./datasets/jane_street/preprocessed/valid.csv
     test_dataset_filepath: ./datasets/jane_street/preprocessed/test.csv
-    features_filepath: ./datasets/jane_street/features.csv
+    #features_filepath: ./datasets/jane_street/features.csv
 
 seed: 1234
 
-shared_features:
-    tf_idf:
-        fit_tf_idf: null
-        text_colname: text
-        sublinear_tf: true
-        min_df: 10
+file_folder: null
 
-    add_sum_col:
-        colnames: ['feature_1', 'feature_2']
-        destination_colname: sum_col
+shared_features:
+    -
+        tf_idf:
+            fit_tf_idf: null
+            text_colname: text
+            sublinear_tf: true
+            min_df: 10
+
+    -
+        add_sum_col:
+            colnames: ['feature_1', 'feature_2']
+            destination_colname: sum_col
 
 experiment_features:
-    tf_idf:
-        text_colname: 
-            type: fixed
-            val: text
-        min_df:
-            type: randint
-            val: [5, 25]
-        
+    -
+        tf_idf:
+            text_colname: 
+                type: fixed
+                val: text
+            min_df:
+                type: randint
+                val: [5, 25]
+            
 
 
 '''
@@ -105,11 +114,12 @@ for dataset_name in df_dict.keys():
 
 import argus
 from argus.utils.data import concat
+from argus.design import get_feature_function_level
+from argus.design.utils import get_functions
 
 class ArgusFeaturesPipeline:
-    def __init__(self, functions_list, functions_by_name: dict, nb_workers=1, verbose=False):
-        if isinstance(functions_list, dict):
-            functions_list = functions_list.items()
+    def __init__(self, functions_list: list, functions_by_name: dict, nb_workers=1, verbose=False):
+        
         self.functions_list = functions_list
         self.functions_by_name = functions_by_name 
         self.nb_workers = nb_workers
@@ -152,7 +162,7 @@ class ArgusFeaturesPipeline:
 
             # If function is row-level, append to buffer
             # and do not apply
-            if get_preprocessing_function_level(function.__name__) == argus.ROW_LEVEL:
+            if get_feature_function_level(function.__name__) == argus.ROW_LEVEL:
                 row_level_functions_buffer.append((function, params))
             else:
                 # Apply all row-level transformations from buffer (then flush)
@@ -210,8 +220,11 @@ class ArgusFeaturesPipeline:
 # 6. Run experiments
 
 # %%
+features_function_list = get_functions(config['shared_features'], argus.FEATURES_FUNCTIONS, file_folder=config['file_folder'])
 
-shared_features_pipeline = ArgusFeaturesPipeline(config['shared_features'], functions_by_name=argus.FEATURES_FUNCTIONS, verbose=True)
+# %%
+
+shared_features_pipeline = ArgusFeaturesPipeline(features_function_list, functions_by_name=argus.FEATURES_FUNCTIONS, verbose=True)
 shared_features_pipeline.apply(dataset_dict)
 # %%
 

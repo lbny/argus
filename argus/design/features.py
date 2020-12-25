@@ -8,11 +8,19 @@ from argus.utils.data import ArgusDataset
 #######################################
 #######################################
 
+DATASET_LEVEL_FUNCTION_NAMES = [
+    "fit_tf_idf",
+    "tf_idf",
+    "add_sum_col"
+]
+
+ROW_LEVEL_FUNCTION_NAMES = []
+
 def fit_tf_idf(dataset: ArgusDataset, params: dict) -> dict:
     tfidf = TfidfVectorizer(
         sublinear_tf=params.get('sublinear_tf') or False,
         min_df=params.get('min_df') or 1,
-        max_df=params.get('max_df') or 1
+        max_df=params.get('max_df') or 1.0
     ) 
     tfidf.fit(dataset[argus.PANDAS][params['text_colname']])
     params['tfidf'] = tfidf
