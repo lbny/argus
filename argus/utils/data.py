@@ -36,6 +36,8 @@ import argus.utils.utils as utils
 PANDAS = 'PD'
 NUMPY = 'NP'
 SPARSE_CSR = 'SP'
+# List is ordered by prefered data type to be used
+# for reference index
 DATA_TYPES = [PANDAS, NUMPY, SPARSE_CSR]
 DATA_MAP = {
     PANDAS: pd.DataFrame,
@@ -77,7 +79,7 @@ class ArgusDataset(tuple):
         df: pd.DataFrame=None,
         X: np.array=None,
         X_sp=None, 
-        use_as_index=PANDAS,
+        use_as_index=None,
         verbose=False):
         """[summary]
 
@@ -100,21 +102,24 @@ class ArgusDataset(tuple):
             dataset_dict[SPARSE_CSR] = X_sp        
         assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
         
-        self._init_shapes()
-
         for data_type in DATA_TYPES:
             if not data_type in dataset_dict:
-                dataset_dict[data_type] = NULL_VALUE_MAP(shape=(self.shape[0],))[data_type] 
+                dataset_dict[data_type] = None#NULL_VALUE_MAP(shape=(self.shape[0],))[data_type] 
 
-        self.index_type = use_as_index
+        if use_as_index:
+            self.index_type = use_as_index
+        else:
+            self.index_type = DATA_TYPES[sorted([DATA_TYPES.index(x) for x in dataset_dict.keys()])[0]]
         self.dataset_dict = dataset_dict
         self.verbose = verbose
+
+        self._init_shapes()
 
         
 
     def _init_shapes(self):
         self.shape = (self.dataset_dict[self.index_type].shape[0], self.dataset_dict[self.index_type].shape[1]) 
-        self.shape_dict = {k: data.shape for k, data in self.dataset_dict.items()}
+        self.shape_dict = {k: data.shape for k, data in self.dataset_dict.items() if not data is None}
 
     def is_null(self):
         if not self.dataset_dict[self.index_type] is None:
