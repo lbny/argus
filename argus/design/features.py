@@ -2,7 +2,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd 
 
 import argus
-from argus.utils.data import ArgusDataset
+from argus.utils.data import ArgusDataset, concat
 
 #######################################
 #######################################
@@ -24,6 +24,7 @@ def fit_tf_idf(dataset: ArgusDataset, params: dict) -> dict:
     ) 
     tfidf.fit(dataset[argus.PANDAS][params['text_colname']])
     params['tfidf'] = tfidf
+    return params
 
 def tf_idf(dataset: ArgusDataset, params: dict) -> ArgusDataset:
     tfidf_matrix = params['tfidf'].transform(dataset[argus.PANDAS][params['text_colname']])

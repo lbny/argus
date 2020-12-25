@@ -42,11 +42,23 @@ DATA_MAP = {
     NUMPY: np.array,
     SPARSE_CSR: sp.csr_matrix
 }
+
+def pd_get_null(shape=(0,0)):
+    return pd.DataFrame(index=np.arange(shape[0]))
+
+def np_get_null(shape=(0,0)):
+    return np.empty(shape=shape)
+
+def sp_get_null(shape=(0,0)):
+    return sp.csr_matrix(np.empty(shape=shape))
+
 NULL_VALUE_MAP = {
-    PANDAS: pd.DataFrame(),
-    NUMPY: np.empty(shape=(0,0)),
-    SPARSE_CSR: sp.csr_matrix(np.empty(shape=(0,0)))
+    PANDAS: pd_get_null,
+    NUMPY: np_get_null,
+    SPARSE_CSR: sp_get_null
 }
+
+
 
 CONCAT_FUNCTIONS = {data_type: dict(inspect.getmembers(utils))[f"{data_type.lower()}_concat"] for data_type in DATA_TYPES}
 
@@ -88,15 +100,17 @@ class ArgusDataset(tuple):
             dataset_dict[SPARSE_CSR] = X_sp        
         assert isinstance(dataset_dict, dict), "dataset_dict must be a dictionarys"
         
+        self._init_shapes()
+
         for data_type in DATA_TYPES:
             if not data_type in dataset_dict:
-                dataset_dict[data_type] = NULL_VALUE_MAP[data_type] 
+                dataset_dict[data_type] = NULL_VALUE_MAP(shape=(self.shape[0],))[data_type] 
 
         self.index_type = use_as_index
         self.dataset_dict = dataset_dict
         self.verbose = verbose
 
-        self._init_shapes()
+        
 
     def _init_shapes(self):
         self.shape = (self.dataset_dict[self.index_type].shape[0], self.dataset_dict[self.index_type].shape[1]) 
