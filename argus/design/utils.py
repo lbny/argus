@@ -41,3 +41,15 @@ def format_parameters(params: dict, file_folder: str) -> dict:
                 params[key] = data
     return params
 
+
+class BaseTrainable(tune.Trainable):
+    def setup(self, config, train=None, valid=None, test=None):
+        self.config = config
+        self.params = config[argus.run.utils.PARAM_TRAINING_PARAMETERS_KEY]
+        assert train, "Train data must be passed"
+        self.train = train
+        self.valid = valid
+        self.test = test
+
+    def step(self):
+        raise NotImplementedError()

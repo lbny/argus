@@ -68,7 +68,17 @@ experiment_features:
                 type: randint
                 val: [5, 25]
             
-
+training_functions:
+    -
+        train_lr:
+            C:
+                type: fixed
+                val: 6.
+    -
+        train_sgd:
+            D:
+                type: fixed
+                val: 8.
 
 '''
 
@@ -89,7 +99,7 @@ config = yaml.load(PARAMETERS, Loader=Loader)
 df_dict = {}
 
 for dataset_name, dataset_filepath in config['source_filepaths'].items():
-    df_dict[dataset_name] = pd.read_csv(dataset_filepath)
+    df_dict[dataset_name] = pd.read_csv(dataset_filepath, nrows=10_000)
     df_dict[dataset_name]['text'] = 'BOnjour à tous !'
 
 #############################################
@@ -209,11 +219,7 @@ class ArgusFeaturesPipeline:
         return df
 
 
-#############################################
-#############################################
-# 5. Configure experiment setup
 
-# Convert search space to ray.tune configuration
 
 #############################################
 #############################################
@@ -224,10 +230,30 @@ features_function_list = get_functions(config['shared_features'], argus.FEATURES
 
 # %%
 
+
+
 shared_features_pipeline = ArgusFeaturesPipeline(features_function_list, functions_by_name=argus.FEATURES_FUNCTIONS, verbose=True)
-shared_features_pipeline.apply(dataset_dict)
+dataset_dict = shared_features_pipeline.apply(dataset_dict)
 # %%
+from ray import tune
+
+
+
 
 # %%
+#############################################
+#############################################
+# 5. Configure experiment setup
 
+# Convert search space to ray.tune configuration
+
+tune_config = argus.run.to_tune_format(config, ['experiment_features', 'training_functions'])
+
+    # %%
+# Run ray experiments
 # %%
+
+def trial(config: dict):
+    pass
+
+

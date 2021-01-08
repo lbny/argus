@@ -57,8 +57,7 @@ def sp_get_null(shape=(0,0)):
 NULL_VALUE_MAP = {
     PANDAS: pd_get_null,
     NUMPY: np_get_null,
-    SPARSE_CSR: sp_get_null
-}
+    SPARSE_CSR: sp_get_null}
 
 
 
@@ -67,10 +66,11 @@ CONCAT_FUNCTIONS = {data_type: dict(inspect.getmembers(utils))[f"{data_type.lowe
 class ArgusDataset(tuple):
     """
     To add a new type of dataset:
-    1- Decalre class static variable, update DATA_TYPES and DATA_MAP
-    2- Update .__getitem__
-    3- Update utils.py with concatenation method, must have same prefix as data_type declared in this module.
-    4- Update .get_data to retrieve merged dataset
+    1- Decalre module static variable, update DATA_TYPES and DATA_MAP
+    2- Decakre <type_prefix>_get_null function
+    3- DEcalre <type_prefix>_concat function
+    4- Update DATA_TYPES list (ordered)
+    5- Update DATA_MAP
     """
     
 
@@ -109,7 +109,7 @@ class ArgusDataset(tuple):
         if use_as_index:
             self.index_type = use_as_index
         else:
-            self.index_type = DATA_TYPES[sorted([DATA_TYPES.index(x) for x in dataset_dict.keys()])[0]]
+            self.index_type = DATA_TYPES[sorted([DATA_TYPES.index(x) for x in dataset_dict.keys() if not dataset_dict.get(x) is None])[0]]
         self.dataset_dict = dataset_dict
         self.verbose = verbose
 
@@ -120,6 +120,7 @@ class ArgusDataset(tuple):
     def _init_shapes(self):
         self.shape = (self.dataset_dict[self.index_type].shape[0], self.dataset_dict[self.index_type].shape[1]) 
         self.shape_dict = {k: data.shape for k, data in self.dataset_dict.items() if not data is None}
+        self.shape_dict.update({k: None for k, data in self.dataset_dict.items() if data is None })
 
     def is_null(self):
         if not self.dataset_dict[self.index_type] is None:
@@ -165,20 +166,24 @@ def concat(datasets, axis=0) -> ArgusDataset:
     if datasets:
         concatenated_dataset = {}
         for data_type in DATA_TYPES:
-            n_axis_per_dataset = np.unique([len(dataset[data_type].shape) for dataset in datasets])
-            assert n_axis_per_dataset.shape[0] == 1, f"Concat mismatch: Different number of axis for {data_type}-type data"
-            n_axis = n_axis_per_dataset[0]
-
-            for _axis in np.arange(n_axis):
-                if _axis != axis:
-                    assert np.unique([dataset[data_type].shape[_axis] for dataset in datasets]).shape[0] == 1, f"Concat mismatch: All {data_type}-type data must have the dimension on axis {_axis}"
-            
             concat_dataset = get_datasets_by_type(datasets, data_type)
-            if concat_dataset:
-                if len(concat_dataset) > 0:
+            if len(concat_dataset) > 1:
+                n_axis_per_dataset = np.unique([len(data.shape) for data in concat_dataset])
+                assert n_axis_per_dataset.shape[0] == 1, f"Concat mismatch: Different number of axis for {data_type}-type data"
+                n_axis = n_axis_per_dataset[0]
+
+                for _axis in np.arange(n_axis):
+                    if _axis != axis:
+                        assert np.unique([data.shape[_axis] for data in concat_dataset]).shape[0] == 1, f"Concat mismatch: All {data_type}-type data must have the dimension on axis {_axis}"
+                                
+                if concat_dataset:
                     concatenated_dataset[data_type] = CONCAT_FUNCTIONS[data_type](concat_dataset, axis=axis)
-                else:
-                    concatenated_dataset[data_type] = concat_dataset[0]
+                    
+            elif len(concat_dataset) == 1:
+                concatenated_dataset[data_type] = concat_dataset[0]
+            else:
+                concatenated_dataset[data_type] = None
+                    
         return ArgusDataset(dataset_dict=concatenated_dataset)
     return ArgusDataset()
     # Concatenate list checking if diff from None
